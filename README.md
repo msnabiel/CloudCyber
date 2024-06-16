@@ -14,16 +14,22 @@ Before running Google Drive Monitor, ensure you have the following prerequisites
 
 ### Google API Credentials
 Google Drive Monitor requires OAuth credentials to access Google Drive API. Follow these steps to set up your credentials:
-1. Visit the [Google Cloud Console](https://console.cloud.google.com/).
-2. Create a new project or select an existing project.
-3. Navigate to the API & Services > Credentials section.
-4. Create credentials for a "Service Account".
-5. Download the JSON file containing your service account credentials.
-6. Place the downloaded JSON file in the project directory or update the file path in `InitializeGoogleDrive` method (`Program.cs`).
+1. **Create a Google Cloud Project**:
+   - Visit the [Google Cloud Console](https://console.cloud.google.com/).
+   - Create a new project or select an existing project.
+
+2. **Create Service Account Credentials**:
+   - Navigate to the API & Services > Credentials section in your project.
+   - Create credentials for a "Service Account".
+   - Select JSON as the key type and download the JSON file containing your service account credentials.
+
+3. **Provide Credentials to Google Drive Monitor**:
+   - Place the downloaded JSON file (`msnabiel-c89f9bee7591.json`) in the project directory.
+   - Alternatively, update the file path in the `InitializeGoogleDrive` method (`Program.cs`) if stored elsewhere.
 
 ### SMTP Configuration
 Google Drive Monitor uses SMTP to send email notifications. Configure the following SMTP settings in `Program.cs`:
-- `smtpSenderEmail`: Sender email address for sending notifications.
+- `smtpSenderEmail`: Email address used to send notifications.
 - `smtpSenderPassword`: Password for the sender email account.
 - `smtpServer`: SMTP server address (e.g., `"smtp.gmail.com"` for Gmail).
 - `smtpPort`: SMTP server port number (e.g., `587` for Gmail).
@@ -37,27 +43,30 @@ For digital signature generation, provide the following certificate details:
 
 Ensure the certificate has a private key that can be accessed by the application.
 
-## Setup
+## Setup and Configuration
 1. **Compile and Run**:
-   - Compile the application and run it. The program will start monitoring Google Drive and display logs in the console.
+   - Build and run the application. The program will start monitoring Google Drive and display real-time logs in the console.
 
 2. **Monitoring Interval**:
-   - Adjust the monitoring interval (`await Task.Delay(10000);` in `MonitorDrive` method) as per your application's requirements.
+   - Adjust the monitoring interval (`await Task.Delay(10000);` in `MonitorDrive` method) as per your application's requirements. This determines how frequently the application checks for updates in Google Drive.
 
-3. **Email Notifications**:
-   - When a file modification is detected, an email notification will be sent to the specified recipient (`SendEmailNotification` method).
+3. **Customize Email Notifications**:
+   - Customize the email content and formatting in the `SendEmailNotification` method (`Program.cs`) to suit your notification preferences and organizational needs.
 
-## Error Handling
-- Basic error handling is implemented to log errors to the console (`try-catch` blocks). Enhance error handling based on specific use case scenarios or integrate with error tracking systems for production environments.
+## Error Handling and Logging
+- Basic error handling is implemented using `try-catch` blocks to log errors to the console. Enhance error handling to include logging to external systems or handling specific exceptions based on your deployment environment.
 
 ## Dependencies
-- **Google.Apis.Drive.v3**: Google Drive API library for accessing Google Drive files and changes.
+- **Google.Apis.Drive.v3**: Library for interfacing with Google Drive API.
 - **System.Net.Mail**: .NET library for sending email notifications via SMTP.
 
-## Notes
-- Ensure proper network connectivity and permissions for accessing Google Drive and sending emails.
-- Customize email content and notification logic (`SendEmailNotification` method) based on your requirements.
+## Notes and Considerations
+- Ensure the application has proper network connectivity and permissions to access Google Drive API and SMTP server.
 - Review and comply with Google Drive API usage policies and quotas to avoid rate limits or restrictions.
+- Securely manage and protect credentials, especially sensitive information like API keys, passwords, and certificates.
 
-## License
-This project is licensed under the MIT License - see the LICENSE file for details.
+## Author Information
+- **Author**: [msyednabiel@gmail.com](mailto:msyednabiel@gmail.com)
+- **Website**: [nabielm.framer.website](https://nabielm.framer.website)
+
+
