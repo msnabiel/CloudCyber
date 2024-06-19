@@ -16,12 +16,12 @@ namespace GoogleDriveMonitor
     class Program
     {
         private static DriveService? driveService;
-        private static string smtpSenderEmail = "msyednabiel@gmail.com";
-        private static string smtpSenderPassword = "wvyt rxjc vowz bnhr";
+        private static string smtpSenderEmail = "YOUR_SENDERS_EMAIL";
+        private static string smtpSenderPassword = "YOUR_APP_PASSWORDS";
         private static string smtpServer = "smtp.gmail.com";
         private static int smtpPort = 587;
         private static string timestampServerUrl = "https://time.certbot.org";
-        private static string certificatePath = "/Users/msnabiel/Desktop/SHARP/CloudCyber/certificate.pfx";
+        private static string certificatePath = "CloudCyber/certificate.pfx";
         private static string certificatePassword = "Sunshine!23";
 
         static async Task Main(string[] args)
@@ -37,7 +37,7 @@ namespace GoogleDriveMonitor
         {
             try
             {
-                var credential = GoogleCredential.FromFile("/Users/msnabiel/Downloads/msnabiel-c89f9bee7591.json")
+                var credential = GoogleCredential.FromFile("PATH_TO_YOUR_GOOGLE_CREDENTIAL_JSON_FILE")
                     .CreateScoped(DriveService.ScopeConstants.Drive);
 
                 driveService = new DriveService(new BaseClientService.Initializer()
@@ -223,7 +223,7 @@ namespace GoogleDriveMonitor
                 msg.Subject = subject;
                 msg.Body = body;
                 msg.IsBodyHtml = false;
-                msg.To.Add("msyednabiel@gmail.com"); // Replace with actual recipient email
+                msg.To.Add("YOUR_RECIPENTS_EMAIL"); // Replace with actual recipient email
 
                 using (var client = new SmtpClient(smtpServer, smtpPort))
                 {
