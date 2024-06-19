@@ -54,110 +54,94 @@ namespace GoogleDriveMonitor
         }
 
         private static async Task MonitorDrive()
+{
+    if (driveService == null)
+    {
+        Console.WriteLine("Drive service not initialized. Exiting monitoring.");
+        return;
+    }
+
+    var changesRequest = driveService.Changes.GetStartPageToken();
+    var startPageToken = (await changesRequest.ExecuteAsync())?.StartPageTokenValue;
+
+    // Dictionary to track previous file names for rename detection
+    Dictionary<string, string> previousFileNames = new Dictionary<string, string>();
+
+    while (true)
+    {
+        Console.WriteLine("Monitoring Google Drive...");
+        if (startPageToken == null)
         {
-            while (true)
-            {
-                Console.WriteLine("Monitoring Google Drive...");
-                if (driveService == null)
-                {
-                    Console.WriteLine("Drive service not initialized. Exiting monitoring.");
-                    return;
-                }
-
-                var changesRequest = driveService.Changes.GetStartPageToken();
-                var startPageToken = (await changesRequest.ExecuteAsync())?.StartPageTokenValue;
-
-                if (startPageToken == null)
-                {
-                    Console.WriteLine("Start page token is null. Exiting monitoring.");
-                    return;
-                }
-
-                try
-                {
-                    var changes = await driveService.Changes.List(startPageToken).ExecuteAsync();
-
-                    if (changes?.Changes == null || changes.Changes.Count == 0)
-                    {
-                        Console.WriteLine("No changes found in Google Drive.");
-                        await Task.Delay(10000); // Wait for 10 seconds before checking again
-                        continue;
-                    }
-
-                    foreach (var change in changes.Changes)
-                    {
-                        // Check if file was removed (renamed or deleted)
-                        if (change.Removed.HasValue && change.Removed == true)
-                        {
-                            string fileIdToRemove = change.FileId ?? "Unknown";
-                            Console.WriteLine($"File {fileIdToRemove} was removed (possibly renamed).");
-
-                            // Get the previous metadata for the file (before rename)
-                            var previousMetadataRequest = driveService.Files.Get(fileIdToRemove);
-                            var previousMetadata = await previousMetadataRequest.ExecuteAsync();
-
-                            if (previousMetadata != null)
-                            {
-                                string previousName = previousMetadata.Name;
-                                string newName = "Unknown";
-
-                                // Check if there's a new file with the same ID (renamed)
-                                var newFileRequest = driveService.Files.Get(fileIdToRemove);
-                                var newFile = await newFileRequest.ExecuteAsync();
-
-                                if (newFile != null)
-                                {
-                                    newName = newFile.Name;
-                                }
-
-                                Console.WriteLine($"File {fileIdToRemove} was renamed from '{previousName}' to '{newName}'.");
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Previous metadata for file {fileIdToRemove} not found.");
-                            }
-
-                            continue; // Skip further processing for this change
-                        }
-
-                        // Normal processing for modified or added files
-                        string fileId = change.FileId ?? "Unknown";
-                        string fileName = change.File?.Name ?? "Unknown";
-
-                        var hashResult = await ComputeFileHashAsync(fileId);
-                        string currentHash = hashResult.Item1 ?? "Unknown";
-                        bool isModified = !string.Equals(currentHash, change.File?.Md5Checksum, StringComparison.OrdinalIgnoreCase);
-
-                        if (isModified)
-                        {
-                            string modifiedTime = change.File?.ModifiedTimeRaw ?? "Unknown";
-                            Console.WriteLine($"File {fileName} (ID: {fileId}) was modified at {modifiedTime}");
-
-                            string timestamp = await GetTimestampAsync(currentHash) ?? "Unavailable";
-                            Console.WriteLine($"Timestamp for file {fileName}: {timestamp}");
-
-                            string signatureData = $"{currentHash}:{timestamp}";
-                            string signature = SignData(signatureData);
-                            Console.WriteLine($"Digital signature for file {fileName}: {signature}");
-
-                            SendEmailNotification("Google Drive Update", $"File {fileName} (ID: {fileId}) was modified at {modifiedTime}.\nTimestamp: {timestamp}\nDigital Signature: {signature}");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"File {fileName} (ID: {fileId}) has not been modified.");
-                        }
-                    }
-
-                    startPageToken = changes.NewStartPageToken;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error occurred during monitoring: {ex.Message}");
-                }
-
-                await Task.Delay(10000); // Wait for 10 seconds before checking again
-            }
+            Console.WriteLine("Start page token is null. Exiting monitoring.");
+            return;
         }
+
+        try
+        {
+            var changes = await driveService.Changes.List(startPageToken).ExecuteAsync();
+
+            if (changes?.Changes == null || changes.Changes.Count == 0)
+            {
+                Console.WriteLine("No changes found in Google Drive.");
+                await Task.Delay(10000); // Wait for 10 seconds before checking again
+                continue;
+            }
+
+            foreach (var change in changes.Changes)
+            {
+                if (change.FileId != null && change.File != null)
+                {
+                    string fileId = change.FileId;
+                    string fileName = change.File.Name ?? "Unknown";
+                    string modifiedTime = change.File.ModifiedTimeRaw ?? "Unknown";
+
+                    Console.WriteLine($"File {fileName} (ID: {fileId}) was modified at {modifiedTime}");
+
+                    // Check for rename
+                    if (previousFileNames.TryGetValue(fileId, out string? previousName))
+                    {
+                        if (!string.Equals(previousName, fileName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            Console.WriteLine($"File {fileId} was renamed from '{previousName}' to '{fileName}'.");
+                        }
+                    }
+                    previousFileNames[fileId] = fileName;
+
+                    // Compute file hash and check for modification
+                    var hashResult = await ComputeFileHashAsync(fileId);
+                    string currentHash = hashResult.Item1 ?? "Unknown";
+                    bool isModified = !string.Equals(currentHash, change.File?.Md5Checksum, StringComparison.OrdinalIgnoreCase);
+
+                    if (isModified)
+                    {
+                        string timestamp = await GetTimestampAsync(currentHash) ?? "Unavailable";
+                        Console.WriteLine($"Timestamp for file {fileName}: {timestamp}");
+
+                        string signatureData = $"{currentHash}:{timestamp}";
+                        string signature = SignData(signatureData);
+                        Console.WriteLine($"Digital signature for file {fileName}: {signature}");
+
+                        SendEmailNotification("Google Drive Update", $"File {fileName} (ID: {fileId}) was modified at {modifiedTime}.\nTimestamp: {timestamp}\nDigital Signature: {signature}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"File {fileName} (ID: {fileId}) has not been modified.");
+                    }
+                }
+            }
+
+            startPageToken = changes.NewStartPageToken;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error occurred during monitoring: {ex.Message}");
+        }
+
+        await Task.Delay(10000); // Wait for 10 seconds before checking again
+    }
+}
+
+
 
         private static async Task<(string?, DateTime)> ComputeFileHashAsync(string fileIdToCompute)
         {
@@ -201,6 +185,8 @@ namespace GoogleDriveMonitor
                 return null;
             }
         }
+
+
 
         private static string SignData(string data)
         {
